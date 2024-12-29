@@ -1,1 +1,4 @@
-prod.env
+.env
+guacamole/mariadb/data/*
+caddy/caddy/data/*
+caddy/caddy/config/*
