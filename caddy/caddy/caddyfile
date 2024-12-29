@@ -1,0 +1,28 @@
+{
+    layer4 {
+        0.0.0.0:443 {
+            @openvpn {
+                openvpn
+            }
+            route @openvpn {
+                proxy 192.168.1.244:1194
+            }
+        }
+    }
+}
+
+api.example.com {
+    reverse_proxy 127.0.0.1:9080 {
+        flush_interval -1
+    }
+}
+
+remote.example.com {
+    @notGuac {
+        not path /guacamole/*
+    }
+    redir @notGuac /guacamole/
+    reverse_proxy 127.0.0.1:8081 {
+        flush_interval -1
+    }
+}

@@ -1,0 +1,112 @@
+services:
+#caddy
+  caddy:
+    build:
+      context: .
+      dockerfile: caddy/build/Dockerfile
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "./caddy/caddy/config:/config"
+      - "./caddy/caddy/data:/data"
+      - "./caddy/caddy/caddyfile:/etc/caddy/Caddyfile"
+    environment:
+      TZ: "Pacific/Auckland"
+
+#apisix
+  apisixetcd:
+    container_name: apisix_etcd
+    image: bitnami/etcd:latest
+    user: root
+    restart: always
+    volumes:
+      - ./apisix/etcd/etcd_data:/etcd_data
+    environment:
+      ETCD_DATA_DIR: /etcd_data
+      ETCD_ENABLE_V2: "true"
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+    ports:
+      - "2379:2379"
+      # - "2380:2380"
+    # network_mode: host
+    networks:
+      - apisix-network
+
+  apisix:
+    container_name: apisix
+    image: "apache/apisix:latest"
+    restart: unless-stopped
+    volumes:
+      - ./apisix/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+    depends_on:
+      - apisixetcd
+    ports:
+      - "9180:9180/tcp"
+      - "9080:9080/tcp"
+      - "9091:9091/tcp"
+      - "9443:9443/tcp"
+    # network_mode: host
+    networks:
+      - apisix-network
+
+#twingate
+  twingate_connector:
+    container_name: "twingate"
+    restart: always
+    image: "twingate/connector:latest"
+    network_mode: host
+    environment:
+      TWINGATE_NETWORK: ${twingate_network}
+      TWINGATE_ACCESS_TOKEN: ${twingate_access_token}
+      TWINGATE_REFRESH_TOKEN: ${twingate_refresh_token}
+      TWINGATE_LABEL_HOSTNAME: alpine-connector
+      TWINGATE_LABEL_DEPLOYED_BY: docker_compose
+      # TWINGATE_DNS: 192.168.1.2
+
+#guacamole
+  guacdb:
+    container_name: guacamole_database
+    image: mariadb:latest
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${guacamole_db_root_password}
+      MYSQL_DATABASE: 'guacamole_db'
+      MYSQL_USER: 'guacamole_user'
+      MYSQL_PASSWORD: ${guacamole_db_password}
+    volumes:
+      - './guacamole/mariadb:/var/lib/mysql'
+
+  guacd:
+    container_name: guacamole_guacd
+    image: guacamole/guacd:latest
+    restart: unless-stopped
+
+  guacamole:
+    container_name: guacamole
+    image: guacamole/guacamole:latest
+    restart: unless-stopped
+    ports:
+      - 8081:8080
+    environment:
+      GUACD_HOSTNAME: "guacd"
+      MYSQL_HOSTNAME: "guacdb"
+      MYSQL_DATABASE: "guacamole_db"
+      MYSQL_USER: "guacamole_user"
+      MYSQL_PASSWORD: ${guacamole_db_password}
+      TOTP_ENABLED: "true"
+    depends_on:
+      - guacdb
+      - guacd
+
+networks:
+  apisix-network:
+    driver: bridge
+
+volumes:
+  mariadb:
+  
