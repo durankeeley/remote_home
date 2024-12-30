@@ -612,27 +612,29 @@ CREATE TABLE guacamole_user_password_history (
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+-- Generate salt for administrator password
+SET @salt = UNHEX(SHA2(UUID(), 256));
 
--- Create default user "guacadmin" with password "guacadmin"
-INSERT INTO guacamole_entity (name, type) VALUES ('guacadmin', 'USER');
+-- Create administrator user
+INSERT INTO guacamole_entity (name, type) VALUES ('administrator', 'USER');
 INSERT INTO guacamole_user (entity_id, password_hash, password_salt, password_date)
 SELECT
     entity_id,
-    x'CA458A7D494E3BE824F5E1E175A1556C0F8EEF2C2D7DF3633BEC4A29C4411960',  -- 'guacadmin'
-    x'FE24ADC5E11E2B25288D1704ABE67A79E342ECC26064CE69C5B3177795A82264',
+    UNHEX(SHA2(CONCAT('administratorpassword', HEX(@salt)), 256)),
+    @salt,
     NOW()
-FROM guacamole_entity WHERE name = 'guacadmin';
+FROM guacamole_entity WHERE name = 'administrator';
 
 -- Grant this user all system permissions
 INSERT INTO guacamole_system_permission (entity_id, permission)
 SELECT entity_id, permission
 FROM (
-          SELECT 'guacadmin'  AS username, 'CREATE_CONNECTION'       AS permission
-    UNION SELECT 'guacadmin'  AS username, 'CREATE_CONNECTION_GROUP' AS permission
-    UNION SELECT 'guacadmin'  AS username, 'CREATE_SHARING_PROFILE'  AS permission
-    UNION SELECT 'guacadmin'  AS username, 'CREATE_USER'             AS permission
-    UNION SELECT 'guacadmin'  AS username, 'CREATE_USER_GROUP'       AS permission
-    UNION SELECT 'guacadmin'  AS username, 'ADMINISTER'              AS permission
+          SELECT 'administrator'  AS username, 'CREATE_CONNECTION'       AS permission
+    UNION SELECT 'administrator'  AS username, 'CREATE_CONNECTION_GROUP' AS permission
+    UNION SELECT 'administrator'  AS username, 'CREATE_SHARING_PROFILE'  AS permission
+    UNION SELECT 'administrator'  AS username, 'CREATE_USER'             AS permission
+    UNION SELECT 'administrator'  AS username, 'CREATE_USER_GROUP'       AS permission
+    UNION SELECT 'administrator'  AS username, 'ADMINISTER'              AS permission
 ) permissions
 JOIN guacamole_entity ON permissions.username = guacamole_entity.name AND guacamole_entity.type = 'USER';
 
@@ -640,9 +642,9 @@ JOIN guacamole_entity ON permissions.username = guacamole_entity.name AND guacam
 INSERT INTO guacamole_user_permission (entity_id, affected_user_id, permission)
 SELECT guacamole_entity.entity_id, guacamole_user.user_id, permission
 FROM (
-          SELECT 'guacadmin' AS username, 'guacadmin' AS affected_username, 'READ'       AS permission
-    UNION SELECT 'guacadmin' AS username, 'guacadmin' AS affected_username, 'UPDATE'     AS permission
-    UNION SELECT 'guacadmin' AS username, 'guacadmin' AS affected_username, 'ADMINISTER' AS permission
+          SELECT 'administrator' AS username, 'administrator' AS affected_username, 'READ'       AS permission
+    UNION SELECT 'administrator' AS username, 'administrator' AS affected_username, 'UPDATE'     AS permission
+    UNION SELECT 'administrator' AS username, 'administrator' AS affected_username, 'ADMINISTER' AS permission
 ) permissions
 JOIN guacamole_entity          ON permissions.username = guacamole_entity.name AND guacamole_entity.type = 'USER'
 JOIN guacamole_entity affected ON permissions.affected_username = affected.name AND guacamole_entity.type = 'USER'

@@ -2,3 +2,4 @@
 guacamole/mariadb/data/*
 caddy/caddy/data/*
 caddy/caddy/config/*
+.secrets
