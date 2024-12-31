@@ -18,13 +18,6 @@ echo "tun" >> /etc/modules-load.d/tun.conf
 echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.d/ipv4.conf
 sysctl -p /etc/sysctl.d/ipv4.conf
 
-# NAT rule for traffic from the VPN subnet to the outside interface (eth0)
-iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
-
-# Allow forwarding between the tun0 and eth0 interfaces
-iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT
-iptables -A FORWARD -i eth0 -o tun0 -j ACCEPT
-
 # Persist rules across reboots
 service iptables save
 rc-update add iptables
@@ -47,10 +40,26 @@ ip=$(ip -4 addr | grep inet | grep -vE '127(\.[0-9]{1,3}){3}' \
      | grep -oE '[0-9]{1,3}(\.[0-9]{1,3}){3}' \
      | sed -n "${ip_number}p")
 
-echo "Selected server IP: $ip"
+# Now find which adapter has that IP:
+adapter=$(
+  ip -4 addr \
+    | grep -B2 "inet $ip" \
+    | grep -E '^[0-9]+:' \
+    | head -1 \
+    | sed -r 's/^[0-9]+:\s+([^:]+):.*/\1/'
+)
+
+echo "Detected adapter for $ip is: $adapter"
 
 #Find DNS server from that IP Address
 dns_server=$(dig -b $ip google.com | awk '/SERVER:/ { split($3, a, "#"); print a[1] }')
+
+# NAT rule for traffic from the VPN subnet to the outside interface (eth0)
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $adapter -j MASQUERADE
+
+# Allow forwarding between the tun0 and eth0 interfaces
+iptables -A FORWARD -i tun0 -o $adapter -j ACCEPT
+iptables -A FORWARD -i $adapter -o tun0 -j ACCEPT
  
 # Set protocol & port
 protocol=tcp
