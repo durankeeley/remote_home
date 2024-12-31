@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Install OpenVPN
+./alpine-install-openvpn.sh
+
 generate_guid() {
   dd if=/dev/urandom bs=16 count=1 2>/dev/null \
     | hexdump -v -e '1/1 "%02x"' \
@@ -35,4 +38,5 @@ if grep -q 'guacamole_db_password=""' ".env"; then
 fi
 
 echo "Starting Containers"
+apk add docker docker-compose 
 docker-compose up -d

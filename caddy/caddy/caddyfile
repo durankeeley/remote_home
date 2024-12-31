@@ -5,7 +5,7 @@
                 openvpn
             }
             route @openvpn {
-                proxy 192.168.1.244:1194
+                proxy 127.0.0.1:1194
             }
         }
     }
